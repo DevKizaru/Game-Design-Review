@@ -229,6 +229,24 @@ A seção 4 é curta de propósito — três ou quatro linhas bastam para dizer 
 
 **Veredito** é um de: 🟢 APROVADO · 🟡 APROVADO COM RESSALVAS · 🟠 REFAZER · 🔴 BLOQUEADO — com no máximo 5 problemas principais.
 
+**O veredito é função do PIOR achado, não da QUANTIDADE de achados.** Cinco problemas de 5.0 não somam um GRAVE. Tratar como se somassem é o que transforma auditoria em máquina de reprovar — porque qualquer sistema auditado com atenção suficiente acumula cinco achados, e aí o veredito passa a medir o esforço do auditor em vez da saúde do sistema.
+
+| Pior severidade | Veredito |
+|---|---|
+| **≥ 8.5** · CRÍTICO | 🔴 BLOQUEADO |
+| **7.0–8.4** · GRAVE | 🟠 REFAZER se a correção mais barata muda o desenho; 🟡 RESSALVAS se resolve em configuração |
+| **3.0–6.9** · problema ou atenção | 🟡 APROVADO COM RESSALVAS |
+| **≤ 2.9** | 🟢 APROVADO |
+
+Duas exceções, e usar qualquer uma delas exige **dizer na frente que está usando**:
+
+- **Dano irreversível** — save, economia, dado de jogador. Puxa para BLOQUEADO mesmo com severidade baixa, porque o eixo "custo de correção" da fórmula não captura "não dá para corrigir".
+- **Sistema sem decisão** — quando a jogada ótima é idêntica em todos os perfis de jogador, não existe achado de número a pontuar: existe a ausência do sistema. Puxa para REFAZER mesmo com severidade baixa, e a frase que justifica é literalmente essa.
+
+Sem essas duas escritas, o veredito segue a tabela. Discordar da tabela é permitido; discordar em silêncio não.
+
+E numa **resposta curta**, onde o triage dispensou o relatório completo: ou você pontua o achado principal, ou não emite veredito formal. Dizer REFAZER sem número atrás é adjetivo com emoji — e é a mesma coisa que a skill recusa quando o DEV diz "tá balanceado".
+
 ### Como um achado deve parecer
 
 Este é o formato de cada item da seção 7. Etiqueta, número, mecanismo e correção — nessa ordem, porque é a ordem em que o DEV consegue agir:
