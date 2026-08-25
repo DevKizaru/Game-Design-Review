@@ -584,5 +584,50 @@ class TestCadeia(unittest.TestCase):
         self.assertLess(abaixo["razao_preco"], lo)
 
 
+class TestFontesAtencao(unittest.TestCase):
+
+    def test_eixo_so_entra_quando_todas_declaram(self):
+        parcial = ac.calc_fontes(
+            ac.parse_fontes(["npc:60:600:2", "cadeia:35:120"]), valor_hora=4000)
+        self.assertFalse(parcial["usa_atencao"])
+        self.assertTrue(parcial["atencao_parcial"])
+
+        completo = ac.calc_fontes(
+            ac.parse_fontes(["npc:60:600:2", "cadeia:35:120:40"]), valor_hora=4000)
+        self.assertTrue(completo["usa_atencao"])
+        self.assertFalse(completo["atencao_parcial"])
+
+    def test_atencao_salva_fonte_que_seria_dominada(self):
+        # sem o eixo, o NPC caro e dominado pela cadeia barata e some do relatorio.
+        # com o eixo, os dois ficam na fronteira - que e o caso real.
+        sem = ac.calc_fontes(ac.parse_fontes(["npc:60:600", "cadeia:35:900"]))
+        self.assertIn("npc", [f["nome"] for f in sem["dominadas"]])
+
+        com = ac.calc_fontes(ac.parse_fontes(["npc:60:600:2", "cadeia:35:900:40"]))
+        self.assertEqual(com["dominadas"], [])
+        self.assertEqual(len(com["fronteira"]), 2)
+
+    def test_dominancia_nos_tres_eixos_continua_valendo(self):
+        r = ac.calc_fontes(ac.parse_fontes(["boa:10:100:5", "ruim:20:50:60"]))
+        self.assertEqual([f["nome"] for f in r["dominadas"]], ["ruim"])
+
+    def test_gemeas_so_com_atencao_igual(self):
+        iguais = ac.calc_fontes(ac.parse_fontes(["a:10:100:5", "b:10:100:5"]))
+        self.assertEqual(len(iguais["gemeas"]), 1)
+        difere = ac.calc_fontes(ac.parse_fontes(["a:10:100:5", "b:10:100:60"]))
+        self.assertEqual(difere["gemeas"], [])
+
+    def test_formato_antigo_de_tres_campos_segue_funcionando(self):
+        fontes = ac.parse_fontes(["a:10:100", "b:20:50"])
+        self.assertIsNone(fontes[0]["atencao"])
+        r = ac.calc_fontes(fontes, valor_hora=1000)
+        self.assertFalse(r["usa_atencao"])
+        self.assertFalse(r["atencao_parcial"])
+
+    def test_atencao_negativa_recusada(self):
+        with self.assertRaises(ValueError):
+            ac.parse_fontes(["a:10:100:-5", "b:10:100:1"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

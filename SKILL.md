@@ -171,7 +171,7 @@ python "<dir-desta-skill>/scripts/auditoria_calc.py" --help
 | `ttk` | DPS efetivo, mitigação percentual **e plana** (`--flat-reduction`), breakpoints de hits |
 | `gacha` | Pulls esperados, pity, chance acumulada, custo médio/p90/teto |
 | `progressao` | Curva de XP, tempo por nível, walls, cauda e tempo total até o cap |
-| `fontes` | Fontes concorrentes do mesmo recurso: dominadas, fora da disputa, redundância prática |
+| `fontes` | Fontes concorrentes do mesmo recurso: dominadas, fora da disputa, redundância prática. Aceita um 4º eixo — minutos de atenção por semana — que é o que faz um NPC caro e uma cadeia barata serem fronteira de verdade |
 | `cadeia` | Cadeia em série: vazão, qual elo é o gargalo, P(cadeia parada), pedágios por elo |
 | `loop` | Escada de loops: degraus sem objetivo, buracos entre degraus, densidade de recompensa, T_loop |
 | `conteudo` | Fábrica de conteúdo: razão evergreen, burn rate, semanas até o conteúdo secar |

@@ -633,11 +633,13 @@ def parse_fontes(lista):
     fontes = []
     for bruto in lista:
         partes = [p.strip() for p in bruto.split(":")]
-        if len(partes) != 3:
+        if len(partes) not in (3, 4):
             raise ValueError(
                 "fonte '%s' deve ter o formato nome:custo_por_unidade:"
-                "unidades_por_hora (ex: 'NPC:12:99999')" % bruto)
-        nome, custo, por_hora = partes
+                "unidades_por_hora[:min_atencao_semana] "
+                "(ex: 'NPC:12:99999' ou 'NPC:12:99999:2')" % bruto)
+        nome, custo, por_hora = partes[0], partes[1], partes[2]
+        atencao = partes[3] if len(partes) == 4 else None
         if not nome:
             raise ValueError("fonte sem nome em '%s'" % bruto)
         try:
@@ -651,18 +653,37 @@ def parse_fontes(lista):
             raise ValueError(
                 "'%s' precisa de unidades_por_hora > 0. Fonte instantanea: "
                 "use o teto real (quantas o jogador consegue por hora)." % nome)
-        fontes.append({"nome": nome, "custo_unidade": custo, "por_hora": por_hora})
+        if atencao is not None:
+            try:
+                atencao = float(atencao)
+            except ValueError:
+                raise ValueError(
+                    "minutos de atencao invalidos em '%s'" % nome)
+            if atencao < 0:
+                raise ValueError("atencao negativa em '%s'" % nome)
+        fontes.append({"nome": nome, "custo_unidade": custo, "por_hora": por_hora,
+                       "atencao": atencao})
     if len(fontes) < 2:
         raise ValueError("informe ao menos 2 fontes - redundancia so existe a partir de 2")
     return fontes
 
 
-def _domina(a, b):
-    """a domina b: nao e pior em nenhum eixo e e melhor em pelo menos um."""
-    return (a["custo_unidade"] <= b["custo_unidade"]
-            and a["por_hora"] >= b["por_hora"]
-            and (a["custo_unidade"] < b["custo_unidade"]
-                 or a["por_hora"] > b["por_hora"]))
+def _domina(a, b, usa_atencao=False):
+    """a domina b: nao e pior em nenhum eixo e e melhor em pelo menos um.
+
+    O custo de atencao (minutos por semana de manutencao) e um terceiro eixo, e
+    e ele que torna legitimo um NPC caro coexistir com uma cadeia barata. So
+    entra na conta quando TODAS as fontes o declaram - senao quem omitiu
+    apareceria como se nao cobrasse atencao nenhuma.
+    """
+    nao_pior = (a["custo_unidade"] <= b["custo_unidade"]
+                and a["por_hora"] >= b["por_hora"])
+    melhor = (a["custo_unidade"] < b["custo_unidade"]
+              or a["por_hora"] > b["por_hora"])
+    if usa_atencao:
+        nao_pior = nao_pior and a["atencao"] <= b["atencao"]
+        melhor = melhor or a["atencao"] < b["atencao"]
+    return nao_pior and melhor
 
 
 def calc_fontes(fontes, valor_hora=None):
@@ -670,14 +691,20 @@ def calc_fontes(fontes, valor_hora=None):
         f["custo_total"] = (f["custo_unidade"] + valor_hora / f["por_hora"]
                             if valor_hora is not None else None)
 
+    declaram = [f.get("atencao") is not None for f in fontes]
+    usa_atencao = all(declaram)
+    atencao_parcial = any(declaram) and not usa_atencao
+
     dominadas, gemeas = [], []
     for b in fontes:
-        if any(_domina(a, b) for a in fontes if a is not b):
+        if any(_domina(a, b, usa_atencao) for a in fontes if a is not b):
             dominadas.append(b)
     for i, a in enumerate(fontes):
         for b in fontes[i + 1:]:
             if (abs(a["custo_unidade"] - b["custo_unidade"]) < TOL
-                    and abs(a["por_hora"] - b["por_hora"]) < TOL):
+                    and abs(a["por_hora"] - b["por_hora"]) < TOL
+                    and (not usa_atencao
+                         or abs(a["atencao"] - b["atencao"]) < TOL)):
                 gemeas.append((a["nome"], b["nome"]))
     fronteira = [f for f in fontes if f not in dominadas]
 
@@ -701,7 +728,8 @@ def calc_fontes(fontes, valor_hora=None):
 
     return {"fronteira": fronteira, "dominadas": dominadas, "gemeas": gemeas,
             "vencedora": vencedora, "margem": margem,
-            "empatadas": empatadas, "fora_da_disputa": fora_da_disputa}
+            "empatadas": empatadas, "fora_da_disputa": fora_da_disputa,
+            "usa_atencao": usa_atencao, "atencao_parcial": atencao_parcial}
 
 
 def cmd_fontes(a):
@@ -714,14 +742,26 @@ def cmd_fontes(a):
     cab = "  %-24s %14s %12s" % ("fonte", "custo/unidade", "un/hora")
     if a.valor_hora is not None:
         cab += " %14s" % "custo total/un"
+    if r["usa_atencao"]:
+        cab += " %14s" % "atencao/sem"
     print(cab)
     for f in fontes:
         linha = "  %-24s %14.4f %12.2f" % (f["nome"], f["custo_unidade"], f["por_hora"])
         if a.valor_hora is not None:
             linha += " %14.4f" % f["custo_total"]
+        if r["usa_atencao"]:
+            linha += " %10.0f min" % f["atencao"]
         if f in r["dominadas"]:
             linha += "   <-- DOMINADA"
         print(linha)
+
+    if r["usa_atencao"]:
+        print("  (3 eixos: preco, vazao e atencao. E o terceiro que faz um NPC")
+        print("  caro e uma cadeia barata serem fronteira de verdade.)")
+    elif r["atencao_parcial"]:
+        print("  AVISO: so algumas fontes declararam minutos de atencao, entao o")
+        print("  eixo foi ignorado. Declare em todas ou em nenhuma - meio termo")
+        print("  faz quem omitiu parecer gratuito em manutencao.")
 
     if a.valor_hora is not None:
         print(SEP)
@@ -763,6 +803,14 @@ def cmd_fontes(a):
               % len(r["empatadas"]))
         print("  para um recurso so. Eleja UMA como canonica e de as outras uma")
         print("  funcao diferente (teto de preco, fonte AFK, emergencia) ou apague.")
+        if r["usa_atencao"]:
+            _atencoes = [f["atencao"] for f in r["empatadas"]]
+            if max(_atencoes) - min(_atencoes) > TOL:
+                print("  MAS: empataram no CUSTO e nao na ATENCAO (%.0f a %.0f min/"
+                      "semana)." % (min(_atencoes), max(_atencoes)))
+                print("  Esse e o caso legitimo: mesmo preco, esforcos diferentes.")
+                print("  Nao apague nenhuma - declare qual eixo cada uma ganha e")
+                print("  precifique a diferenca de proposito.")
     if r["fora_da_disputa"]:
         print("  FORA DA DISPUTA - nao sao dominadas nos dois eixos, mas o custo")
         print("  total as tira do jogo (acima de %.0f%% da melhor):"
@@ -1257,7 +1305,9 @@ def main():
 
     s = sub.add_parser("fontes", help="redundancia: fontes concorrentes do mesmo recurso")
     s.add_argument("--fonte", action="append", required=True,
-                   help="repita por fonte: 'nome:custo_por_unidade:unidades_por_hora'")
+                   help="repita por fonte: 'nome:custo_por_unidade:unidades_por_hora"
+                        "[:min_atencao_semana]'. O 4o campo e o custo de atencao; "
+                        "declare em todas as fontes ou em nenhuma")
     s.add_argument("--recurso", default=None, help="nome do recurso (so rotulo)")
     s.add_argument("--valor-hora", type=float, default=None,
                    help="custo de oportunidade de 1 hora, na mesma moeda do custo")
