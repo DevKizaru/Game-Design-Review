@@ -1,0 +1,79 @@
+{
+  "skill_name": "esculacho-de-dev-vagabundo",
+  "baseline": "without_skill (sem skill nenhuma, mesmos prompts, execuções independentes)",
+  "notas": "Os alvos 0 e 1 rodam com um projeto real aberto no diretório de trabalho; 2, 3 e 4 são autocontidos. As saídas brutas de cada execução ficam fora do repositório. O eval 3 nasceu como controle negativo e foi reclassificado — ver o campo `testa` dele.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "alvo-pequeno",
+      "prompt": "subi o drop rate do Golem Ancião de 2% pra 3.5%, ele leva uns 4 min pra matar em party de 3. tá bom assim?",
+      "testa": "O bloco de triage. Alvo minúsculo: a resposta deve ser curta E a investigação deve continuar profunda. Os dois eixos são independentes, e foi exatamente essa confusão que a iteration 1 pegou.",
+      "assertions": [
+        "Resposta tem menos de 500 palavras",
+        "NÃO usa a estrutura completa de 15 seções do relatório de auditoria",
+        "Lê o código do projeto em vez de responder só com o que está no prompt",
+        "Calcula algo concreto (EV, drops/hora, tentativas até o drop) OU declara explicitamente qual número falta",
+        "Usa ao menos uma etiqueta (FATO / MÉTRICA / HIPÓTESE / RISCO / OPINIÃO)",
+        "Não inventa números que o usuário não forneceu sem rotulá-los como hipótese"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "redundancia-premortem",
+      "prompt": "tô pensando em botar um sistema de poções no meu MMO. hoje o jogador farma erva no mapa e craftou poção no alquimista da cidade. queria botar também um NPC vendendo poção pronta por gold, e um drop de poção direto dos mobs pra quem tá longe da cidade. o que acha?",
+      "testa": "A lente de redundância sistêmica em paralelo. Três fontes para o mesmo recurso, circuito de gold, e o craft virando conteúdo morto.",
+      "assertions": [
+        "Identifica que poção passaria a ter 3 fontes concorrentes",
+        "Nomeia o problema (redundância sistêmica, escolha falsa, conteúdo morto ou equivalente)",
+        "Aponta que o drop direto e/ou o NPC tornam o craft do alquimista irrelevante",
+        "Menciona o efeito do NPC sobre o preço da erva / teto de preço / sink de gold",
+        "Entrega um veredito explícito (APROVADO / RESSALVAS / REFAZER / BLOQUEADO)",
+        "Propõe correção mais barata em vez de mandar refazer tudo",
+        "Pede os números que faltam em vez de inventar valores"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "loop-retencao",
+      "prompt": "cara, meu idle de RPG tá com um problema chato: o pessoal entra, joga uns 2 3 dias bem empolgado e depois some. o jogo tem upgrade de equipamento, tem 12 zonas de farm, tem prestígio no fim. não sei o que tá faltando",
+      "testa": "A lente de design/loop. Deve usar a escada de loops e concluir que falta degrau de semana, não que falta conteúdo.",
+      "assertions": [
+        "Usa a escada de loops (momento / sessão / semana / temporada / vida) ou equivalente explícito",
+        "Identifica degrau ausente numa escala de tempo específica e liga ao churn observado (2-3 dias)",
+        "NÃO recomenda 'adicionar mais conteúdo' como solução principal",
+        "Distingue conteúdo (12 zonas) de loop",
+        "Declara os dados que faltam (retenção por dia, objetivo nomeável) e propõe o experimento mínimo",
+        "Usa o formato VISÃO DE DESIGN ou uma versão colapsada dele, não o relatório de auditoria de sistema"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "sistema-sem-decisao",
+      "prompt": "tenho um sistema de encantamento assim: o boss semanal dropa ~6 essências por kill. o jogador gasta 3 essências pra rolar um afixo aleatório na arma, entre 8 afixos possíveis. pela minha planilha os 8 ficam dentro de ±5% de dps um do outro. pode re-rolar quantas vezes quiser, sempre 3 essências. a essência não tem NPC vendendo nem nenhum outro uso no jogo. o mesmo boss semanal também dropa o material de craft de armadura. o que acha?",
+      "testa": "Escrito para ser controle negativo e FALHOU nessa função — o sistema não era saudável. Evitando as armadilhas que a skill já conhece (redundância, dominância, degrau vazio), ele caiu em outra: 8 afixos equivalentes com re-roll ilimitado e uma moeda sem uso alternativo produzem zero decisão. A skill acertou o diagnóstico. O eval foi reclassificado como teste POSITIVO para a armadilha 'sistema sem decisão', e o controle negativo de verdade é o eval 4.",
+      "assertions": [
+        "Identifica que o re-roll não é decisão (custo de oportunidade da essência = 0)",
+        "Nota que a essência não tem uso alternativo, então gastar sempre domina guardar",
+        "Reconhece que a banda de ±5% é trabalho bem-feito, mesmo ao criticar o sistema",
+        "Observa que a jogada ótima é idêntica em todos os perfis de jogador",
+        "O veredito é consistente com a tabela de severidade OU declara explicitamente que está usando a exceção de 'sistema sem decisão'"
+      ],
+      "resultado_iteration_2": "Diagnóstico correto e bem argumentado, mas veredito 🟠 REFAZER com pior achado 6.30 (PROBLEMA) — inconsistente com a própria escala da skill. Causa: não havia regra ligando severidade a veredito. Corrigido no SKILL.md com a tabela de veredito e as duas exceções declaráveis."
+    },
+    {
+      "id": 4,
+      "name": "controle-negativo",
+      "prompt": "tô montando um MMO novo (não é esse projeto aqui) e queria tua opinião no sistema de talentos. a cada 10 níveis o jogador escolhe 1 de 3 talentos daquele tier, e os 3 são bem diferentes: um é dano em alvo único, um é dano em área, um é sobrevivência. no meu benchmark de boss (alvo único) eles ficam em 100 / 92 / 78 de dps relativo, mas em pack de 8 mobs o de área faz 240 e no meu log de morte o de sobrevivência corta as mortes em uns 30%. dá pra resetar pagando gold, o custo dobra a cada reset e volta pro mínimo depois de 30 dias. não tem item nem NPC que reseta de graça. tá bom assim?",
+      "testa": "CONTROLE NEGATIVO — o eval mais importante da suíte. O sistema é saudável de propósito e, ao contrário do eval 3, tem decisão real: cada opção vence num contexto diferente (alvo único / pack / sobrevivência), a troca custa gold que cresce, o custo decai em 30 dias, a fonte de reset é única e não há caminho pago. A skill deve APROVAR. Se ela inventar problema grave aqui, é uma ferramenta que cria trabalho para justificar a própria existência — e esse é o modo de falha que faz o DEV parar de usar a ferramenta, inclusive quando o defeito é real.",
+      "assertions": [
+        "Emite veredito de aprovação (🟢 APROVADO ou 🟡 APROVADO COM RESSALVAS)",
+        "Nenhum achado com severidade >= 7,0",
+        "O veredito é consistente com a tabela de severidade do SKILL.md",
+        "NÃO trata o spread 100/92/78 em alvo único como dominância, já que cada opção vence num contexto diferente",
+        "Reconhece nominalmente ao menos dois acertos do sistema",
+        "NÃO recomenda adicionar sistema, fonte ou mecânica nova",
+        "Se apontar algo, apresenta como RISCO ou métrica a instrumentar"
+      ]
+    }
+  ]
+}
