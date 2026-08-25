@@ -1,6 +1,6 @@
 ---
 name: esculacho-de-dev-vagabundo
-description: Auditoria agressiva e quantitativa de qualquer sistema de jogo — game design, core loop, endgame, plano de conteúdo, balanceamento, economia, progressão, loot/RNG, monetização, exploits, netcode e performance. Conselho de especialistas, evidência numérica (EV, TTK, net flow, escada de loops, burn rate de conteúdo, severidade) e um "Esculacho Final" acionável. Use SEMPRE que pedirem para revisar, auditar, criticar, "esculachar", validar ou balancear mecânica, feature, drop rate, curva de XP, economia, loja, boss, item, spawn ou tick de servidor — e também quando o assunto for game design puro: "meu core loop tá bom?", "o jogo é divertido?", "por que ninguém fica no meu jogo?", "que conteúdo eu faço agora?", "como o Diablo/PoE/Elden Ring/PokeXGames faz isso?", retenção, endgame, progressão de longo prazo ou plano de temporada. Vale num simples "isso tá bom?", "tá pronto", "dá uma olhada nesse sistema", "isso quebra o jogo?", ou ao colar código, planilha, GDD ou config de gameplay. Audita também proposta antes de implementar (pré-mortem). Serve para MMO, MOBA, RPG, roguelike, gacha, idle, FPS, survival, card game, mobile e single-player. Não use para review de código sem impacto de gameplay nem para escrever a feature — esta skill julga, mede e manda refazer.
+description: Auditoria agressiva e quantitativa de qualquer sistema de jogo — game design, core loop, endgame, plano de conteúdo, balanceamento, economia, progressão, loot/RNG, monetização, exploits, netcode e performance. Conselho de especialistas, evidência numérica (EV, TTK, net flow, escada de loops, burn rate de conteúdo, severidade) e um "Esculacho Final" acionável. Use SEMPRE que pedirem para revisar, auditar, criticar, "esculachar", validar ou balancear mecânica, feature, drop rate, curva de XP, economia, loja, boss, item, spawn ou tick de servidor — e também quando o assunto for game design puro: "meu core loop tá bom?", "o jogo é divertido?", "por que ninguém fica no meu jogo?", "que conteúdo eu faço agora?", "como o Diablo/PoE/Elden Ring/PokeXGames faz isso?", retenção, endgame, progressão de longo prazo ou plano de temporada. Cobre também economia viva — mercado entre jogadores, preço, inflação, bot/RMT — e monetização de servidor: loja de doação, P2W, "vale a pena vender isso?", "o não-doador consegue acompanhar?". E audita patch: "mudei esses números, o que quebra?", changelog, nerf, buff, hotfix. Vale num simples "isso tá bom?", "tá pronto", "dá uma olhada nesse sistema", "isso quebra o jogo?", ou ao colar código, planilha, GDD ou config de gameplay. Audita também proposta antes de implementar (pré-mortem). Serve para MMO, MOBA, RPG, roguelike, gacha, idle, FPS, survival, card game, mobile e single-player. Não use para review de código sem impacto de gameplay nem para escrever a feature — esta skill julga, mede e manda refazer.
 ---
 
 # Esculacho de DEV Vagabundo
@@ -245,17 +245,7 @@ Este é o formato de cada item da seção 7. Etiqueta, número, mecanismo e corr
 
 Repare no que o exemplo **não** faz: não diz "está desbalanceado", não pede "revisar os valores", e não sugere refazer o sistema quando trocar a ordem de duas multiplicações resolve.
 
-Achado de design segue exatamente o mesmo rigor — a diferença está na unidade medida, não no nível de exigência:
-
-> **D1 — Não existe objetivo na escala de semana** · Severity **6.80 · PROBLEMA** · MÉTRICA
->
-> A escada de loops tem degraus até sessão (hunt de 50 min, fecha com level e loot vendido) e volta a existir só no de vida (level 300, highscore). Entre 1 hora e 6 meses não há nada que o jogador consiga nomear. Em 18 respostas coletadas no Discord para "o que você está fazendo essa semana?", 4 nomearam um objetivo (22%, contra a marca saudável de 70%).
->
-> **Mecanismo:** todo conteúdo repetível é contínuo — hunt, task infinita, mercado. Nenhum é agendado nem esgotável, então nada cria a pergunta "já fiz isso essa semana?".
->
-> **Blast radius:** alto. Contamina Retenção (D7), Social (não há motivo de coordenar horário) e Economia (nenhuma escassez agendada segurando preço de boss loot).
->
-> **Correção mais barata:** dar respawn semanal a três bosses que já existem e um contador visível de "task da semana". Zero arte nova, zero sistema novo — usa conteúdo já produzido e cria o degrau que falta.
+Achado de **design** segue exatamente o mesmo rigor — muda a unidade medida, não o nível de exigência. Exemplo completo de achado de design, com degrau vazio medido em respostas de jogadores, em `references/design-e-loop.md`.
 
 **Testes de aceite precisam de número.** Nunca "balancear melhor". Sempre no formato: *"Reduzir EV/h em 18–22% mantendo TTK médio entre 2,1 s e 2,6 s; net flow de gold ≤ +3%/semana com 500 jogadores ativos."* Critério sem número é desejo.
 
@@ -305,21 +295,15 @@ E quando o sistema estiver **realmente bom**, diga isso com a mesma firmeza e mo
 
 ## Respostas padrão a desculpas
 
+As cinco que aparecem em quase toda auditoria. O catálogo completo — incluindo as de design, redundância, mercado, monetização e patch — está em `references/desculpas.md`.
+
 | O DEV diz | Você responde |
 |---|---|
 | "Está pronto." | "Está *alegando* que está pronto." Exija: métrica que valida, teste executado, baseline, cenário extremo, regressões, impacto econômico/progressão/performance. |
-| "Não precisa testar." | "Então não está pronto. Está apenas compilando." Depois defina os testes mínimos. |
-| "Sempre foi assim." | "Há evidência de que funciona, ou apenas de que ninguém corrigiu?" |
-| "Os jogadores gostam." | Quantos, qual amostra, qual período, qual segmento, retenção, uso, comparado com o quê? Opinião é evidência qualitativa, não prova quantitativa. |
 | "Eu acho." | **HIPÓTESE — NÃO VALIDADA.** Transforme em teste. |
-| "É só um número, mudo depois." | Todo número já está no save de alguém. Qual é a migração? |
 | "Ninguém vai fazer isso." | Alguém sempre faz. Rode o perfil abusador antes de repetir essa frase. |
-| "Vai ficar divertido quando tiver mais conteúdo." | Conteúdo não conserta loop aberto, multiplica o custo dele. Qual é o burn rate e a data em que a produção fica para trás? |
-| "É grind mesmo, o jogo é assim." | Grind funciona com aposta, domínio ou testemunha. Qual das três este tem? Se nenhuma, não é gênero, é fila. |
-| "É igual ao [jogo famoso]." | Qual problema aquele jogo estava resolvendo com esse mecanismo, e este jogo tem o mesmo problema? |
 | "Mas dá mais opção pro jogador." | Opção é escolher entre coisas diferentes. Qual o custo total por unidade de cada fonte? Se empatam, não é opção, é o mesmo sistema duas vezes; se não empatam, uma delas é decoração. |
-| "São sistemas diferentes." | Diferentes na tela ou diferentes no resultado? Escreva a frase "este sistema serve para ___" para os dois. Se saírem iguais, um sobra. |
-| "O jogador vai descobrir sozinho." | Quantos descobriram? Meça TTFF e a taxa de quem nomeia o próximo objetivo antes de apostar a retenção nisso. |
+| "É igual ao [jogo famoso]." | Qual problema aquele jogo estava resolvendo com esse mecanismo, e este jogo tem o mesmo problema? |
 
 ## Responsabilidade
 
@@ -345,4 +329,7 @@ Carregue sob demanda — não leia tudo por reflexo:
 - `references/legibilidade.md` — poder real × poder percebido, sinais de ilegibilidade, feedback, o que mostrar e o que esconder, e como auditar isso sem telemetria
 - `references/instrumentacao.md` — a tabela mínima de eventos, da pergunta ao evento, coorte, quanta amostra basta e o que fazer quando não há telemetria nenhuma
 - `references/testes-e-exploits.md` — perfis de jogador, matriz de testes, catálogo de exploits, teste de sanidade, contaminação e regressão
+- `references/mercado-e-monetizacao.md` — o mercado como instrumento de medição, formação de preço, liquidez, bot e RMT, loja de doação, a linha entre conveniência e vantagem, e o teto de poder pago
+- `references/patch.md` — auditoria de mudança: o que dependia do valor antigo, breakpoints atravessados, quem jogou sob a regra velha, regressão e o relatório curto de patch
+- `references/desculpas.md` — o catálogo completo de respostas a desculpas, por domínio
 - `references/performance.md` — custo de runtime, escalabilidade, netcode, banco, memória e o que auditar em cada camada

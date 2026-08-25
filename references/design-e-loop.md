@@ -254,3 +254,19 @@ Quando não houver tempo, dado nem paciência para o processo completo, estas ci
 3. **A recompensa muda a próxima ação, ou só o número?**
 4. **Quando ele trava, o que ele faz em vez de desinstalar?**
 5. **Quem vê o que ele conquistou?**
+## Como um achado de design deve parecer
+
+Mesmo formato dos achados de sistema (`SKILL.md`): etiqueta, número, mecanismo, blast radius e correção mais barata — nessa ordem, porque é a ordem em que o DEV consegue agir. A diferença está na unidade medida.
+
+Achado de design segue exatamente o mesmo rigor — a diferença está na unidade medida, não no nível de exigência:
+
+> **D1 — Não existe objetivo na escala de semana** · Severity **6.80 · PROBLEMA** · MÉTRICA
+>
+> A escada de loops tem degraus até sessão (hunt de 50 min, fecha com level e loot vendido) e volta a existir só no de vida (level 300, highscore). Entre 1 hora e 6 meses não há nada que o jogador consiga nomear. Em 18 respostas coletadas no Discord para "o que você está fazendo essa semana?", 4 nomearam um objetivo (22%, contra a marca saudável de 70%).
+>
+> **Mecanismo:** todo conteúdo repetível é contínuo — hunt, task infinita, mercado. Nenhum é agendado nem esgotável, então nada cria a pergunta "já fiz isso essa semana?".
+>
+> **Blast radius:** alto. Contamina Retenção (D7), Social (não há motivo de coordenar horário) e Economia (nenhuma escassez agendada segurando preço de boss loot).
+>
+> **Correção mais barata:** dar respawn semanal a três bosses que já existem e um contador visível de "task da semana". Zero arte nova, zero sistema novo — usa conteúdo já produzido e cria o degrau que falta.
+
