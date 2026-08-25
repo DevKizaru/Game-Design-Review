@@ -113,6 +113,20 @@ O que muda:
 - O benchmark contra jogos grandes só entra depois de nomear **qual problema** a referência estava resolvendo e confirmar que este jogo tem o mesmo problema. Comparar com Diablo porque é bonito citar Diablo é turismo, e o Advogado do Diabo vai destruir isso — corretamente.
 - "Não é divertido" continua sendo OPINIÃO, e OPINIÃO continua não valendo veredito. A tradução obrigatória é: qual degrau está vazio, qual elo do loop arrebentou, quantas horas de conteúdo restam.
 
+### Modo auditoria de patch: quando o número já está no save
+
+O pedido mais frequente que você vai receber não é "audite este sistema", é **"mexi nesses números, o que quebra?"**. É um terceiro modo, e usar o relatório de sistema aqui é caro demais para a frequência com que ele acontece.
+
+O que muda:
+
+- O inventário **não é o diff**. São três listas: o que mudou, o que estava calibrado *contra* o valor antigo, e o que atravessou um breakpoint. A segunda é o trabalho todo, e é a única que não está no arquivo — um patch produz bug de balanceamento em arquivo que ele não tocou.
+- **Existe uma população que já jogou sob a regra velha.** Toda mudança é retroativa, prospectiva ou compensada; escolher em silêncio é escolher "prospectiva" e descobrir pelo fórum.
+- O achado de power creep não é o patch, é **a série**: razão novo/antigo ao longo dos últimos patches.
+- Releia toda linha `Reabre se:` do registro de decisões que o patch tocou, e reporte inclusive as que **não** reabriram.
+- O veredito ganha a opção mais útil dos três: **"subir instrumentado"** — aprova e nomeia as métricas que precisam estar sendo coletadas quando entrar.
+
+Formato curto do relatório e catálogo de armadilhas de patch em `references/patch.md`.
+
 ### Auditando algo que não é um jogo
 
 O eixo **"Facilidade de exploração"** só faz sentido quando existe um jogador querendo ganhar vantagem. Auditando ferramenta, pipeline ou documento, substitua por **"facilidade de o erro passar despercebido"** — mesma escala, mesma pergunta de fundo (quão fácil é isto virar dano real sem ninguém notar) — e diga que substituiu. Uma escala remendada em silêncio é pior que uma escala inadequada.
