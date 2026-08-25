@@ -10,6 +10,7 @@ Uso rapido:
   python auditoria_calc.py gacha --p 0.006 --pity 90 --price 2.5
   python auditoria_calc.py fontes --recurso food --valor-hora 4000 --fonte "farm na base:35:120" --fonte "farm na ilha:0:40" --fonte "NPC por gold:60:600"
   python auditoria_calc.py loop --degraus "momento:2:sim,micro:45:sim,medio:720:nao,sessao:3000:sim,semana:0:nao,temporada:0:nao,vida:0:sim" --recompensas-sessao 6 --sessao-min 50
+  python auditoria_calc.py cadeia --recurso comida --elos "plantio:120:0.2:nao,fazenda:90:0.15:nao,cozinha:200:0.1:sim" --piso 0.55
   python auditoria_calc.py conteudo --perecivel-horas 40 --evergreen-horas 12 --consumo-semana 25 --producao-mes 6
 
 Todas as saidas mostram a conta, nao so o resultado: o DEV precisa poder refazer
@@ -1013,6 +1014,178 @@ def cmd_conteudo(a):
 
 # --------------------------------------------------------------------------
 
+# --------------------------------------------------------------------------
+# cadeia  (gargalo em serie: varias etapas obrigatorias para um recurso)
+# --------------------------------------------------------------------------
+
+FAIXA_COEXISTENCIA = (0.60, 0.85)
+
+
+def parse_elos(texto):
+    """'nome:unidades_por_hora:p_parado:decisao,...' -> lista de dicts."""
+    elos = []
+    for bruto in texto.split(","):
+        bruto = bruto.strip()
+        if not bruto:
+            continue
+        partes = [p.strip() for p in bruto.split(":")]
+        if len(partes) != 4:
+            raise ValueError(
+                "elo '%s' deve ter o formato nome:unidades_por_hora:p_parado:"
+                "decisao (ex: 'plantio:120:0.15:nao')" % bruto)
+        nome, vazao, p_parado, decisao = partes
+        if not nome:
+            raise ValueError("elo sem nome em '%s'" % bruto)
+        try:
+            vazao = float(vazao)
+            p_parado = float(p_parado)
+        except ValueError:
+            raise ValueError("numeros invalidos no elo '%s'" % nome)
+        if vazao <= 0:
+            raise ValueError("elo '%s' precisa de unidades_por_hora > 0" % nome)
+        if not 0.0 <= p_parado < 1.0:
+            raise ValueError(
+                "p_parado de '%s' deve ser FRACAO entre 0 e 1 (recebido %s). "
+                "15%% = 0.15." % (nome, p_parado))
+        d = decisao.lower()
+        if d not in ("sim", "nao", "s", "n", "1", "0", "true", "false"):
+            raise ValueError(
+                "decisao de '%s' deve ser sim/nao (recebido '%s'). Sim = o elo "
+                "tem escolha que muda o resultado, risco proprio OU saida com "
+                "outro destino alem do proximo elo." % (nome, decisao))
+        elos.append({"nome": nome, "vazao": vazao, "p_parado": p_parado,
+                     "decisao": d in ("sim", "s", "1", "true")})
+    if len(elos) < 2:
+        raise ValueError("informe ao menos 2 elos - cadeia so existe a partir de 2")
+    return elos
+
+
+def calc_cadeia(elos, piso=None, manutencao_min=None, horas_semana=None,
+                preco_cadeia=None, preco_teto=None):
+    # Vazao de uma serie e o elo mais fraco, nunca a media: otimizar fora do
+    # gargalo rende exatamente zero.
+    gargalo = min(elos, key=lambda e: e["vazao"])
+    vazao = gargalo["vazao"]
+
+    disponivel = 1.0
+    for e in elos:
+        disponivel *= (1.0 - e["p_parado"])
+    p_parada = 1.0 - disponivel
+
+    # Referencia honesta: a mesma coisa vinda de fonte unica carregaria so a
+    # ociosidade do proprio gargalo.
+    p_parada_fonte_unica = gargalo["p_parado"]
+
+    pedagios = [e for e in elos if not e["decisao"]]
+    vazao_efetiva = vazao * disponivel
+
+    ganho_prometido = ganho_efetivo = desempenho = None
+    if piso is not None:
+        if not 0.0 <= piso < 1.0:
+            raise ValueError("--piso deve ser fracao entre 0 e 1 (55%% = 0.55)")
+        ganho_prometido = 1.0 - piso
+        ganho_efetivo = ganho_prometido * disponivel
+        desempenho = piso + ganho_efetivo
+
+    atencao_pct = None
+    if manutencao_min is not None and horas_semana:
+        atencao_pct = manutencao_min / (horas_semana * 60.0)
+
+    razao_preco = None
+    if preco_cadeia is not None and preco_teto:
+        razao_preco = preco_cadeia / float(preco_teto)
+
+    return {"vazao": vazao, "gargalo": gargalo, "disponivel": disponivel,
+            "p_parada": p_parada, "p_parada_fonte_unica": p_parada_fonte_unica,
+            "pedagios": pedagios, "vazao_efetiva": vazao_efetiva,
+            "ganho_prometido": ganho_prometido, "ganho_efetivo": ganho_efetivo,
+            "desempenho": desempenho, "atencao_pct": atencao_pct,
+            "razao_preco": razao_preco}
+
+
+def cmd_cadeia(a):
+    elos = parse_elos(a.elos)
+    r = calc_cadeia(elos, a.piso, a.manutencao_min, a.horas_semana,
+                    a.preco_cadeia, a.preco_teto)
+    recurso = a.recurso or "o recurso"
+
+    print("CADEIA EM SERIE ATE %s" % recurso.upper())
+    print(SEP)
+    print("  %-22s %12s %10s  %s" % ("elo", "un/hora", "p_parado", "decisao?"))
+    for e in elos:
+        marca = "sim" if e["decisao"] else "NAO -> PEDAGIO"
+        tag = "   <-- GARGALO" if e is r["gargalo"] else ""
+        print("  %-22s %12.2f %9.0f%%  %s%s"
+              % (e["nome"], e["vazao"], e["p_parado"] * 100, marca, tag))
+
+    print(SEP)
+    print("  vazao da cadeia = min dos elos = %.2f un/hora (%s)"
+          % (r["vazao"], r["gargalo"]["nome"]))
+    print("  Todo balanceamento feito fora de '%s' rende zero."
+          % r["gargalo"]["nome"])
+
+    print(SEP)
+    print("  P(cadeia parada) = 1 - produto de (1 - p_i) = %.1f%%"
+          % (r["p_parada"] * 100))
+    print("  Fonte unica com a mesma ociosidade do gargalo: %.1f%%"
+          % (r["p_parada_fonte_unica"] * 100))
+    print("  Cada elo a mais SO derruba a confiabilidade; ela nunca sobe.")
+    print("  vazao efetiva = vazao x disponibilidade = %.2f un/hora"
+          % r["vazao_efetiva"])
+
+    if r["desempenho"] is not None:
+        print(SEP)
+        print("  Piso gratuito (o que o jogador mantem sem a cadeia) = %.0f%%"
+              % ((r["desempenho"] - r["ganho_efetivo"]) * 100))
+        print("  A cadeia PROMETE +%.0f pts e ENTREGA +%.0f pts (a linha para "
+              "%.0f%% do tempo)."
+              % (r["ganho_prometido"] * 100, r["ganho_efetivo"] * 100,
+                 r["p_parada"] * 100))
+        print("  desempenho esperado = %.0f%% do pleno" % (r["desempenho"] * 100))
+        print("  PUNICAO DUPLA: com piso gratuito o jogador nao trava - ele cai")
+        print("  para o piso E ainda sai do que fazia para consertar a linha.")
+
+    if r["atencao_pct"] is not None:
+        print(SEP)
+        print("  custo de atencao = %.0f min/semana = %.1f%% do tempo de jogo"
+              % (a.manutencao_min, r["atencao_pct"] * 100))
+        if r["ganho_efetivo"] is not None and r["ganho_efetivo"] < 0.10:
+            print("  ALERTA: manutencao real para menos de 10 pts de ganho. Na")
+            print("  pratica o sistema e opcional - e o jogador vai declinar.")
+
+    if r["razao_preco"] is not None:
+        lo, hi = FAIXA_COEXISTENCIA
+        print(SEP)
+        print("  preco da cadeia / preco do teto = %.0f%% (faixa saudavel: "
+              "%.0f%%-%.0f%%)" % (r["razao_preco"] * 100, lo * 100, hi * 100))
+        if r["razao_preco"] > hi:
+            print("  ACIMA DA FAIXA: o desconto nao paga a manutencao. A cadeia")
+            print("  vira conteudo morto e todo mundo compra do NPC.")
+        elif r["razao_preco"] < lo:
+            print("  ABAIXO DA FAIXA: o NPC deixa de ser teto e vira decoracao.")
+            print("  Some a rede de protecao do novato e o piso do mercado.")
+        else:
+            print("  Dentro da faixa: as duas fontes coexistem de verdade.")
+
+    print(SEP)
+    n, p = len(elos), len(r["pedagios"])
+    if p:
+        print("  PEDAGIOS (%d de %d elos): %s"
+              % (p, n, ", ".join(e["nome"] for e in r["pedagios"])))
+        print("  Um elo passa no teste se tem escolha que muda resultado, risco")
+        print("  proprio OU saida com outro destino. Estes nao tem nenhum dos 3.")
+        if p >= n - 1:
+            print("  VEREDITO: cadeia de %d elos com %d pedagios e uma fonte unica"
+                  % (n, p))
+            print("  com %d telas de espera. Colapse os pedagios em custo do elo" % p)
+            print("  que sobrar: nao ha decisao nenhuma ali para o jogador perder.")
+    else:
+        print("  Nenhum pedagio: todo elo adiciona decisao, risco ou valor.")
+        print("  A cadeia e superficie de decisao, nao atrito. Diga isso com a")
+        print("  mesma firmeza com que diria o contrario - mas P(parada) segue")
+        print("  valendo: alguem do outro lado tem que estar pagando por ela.")
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="Calculadora de auditoria de sistemas de jogo.",
@@ -1112,6 +1285,24 @@ def main():
     s.add_argument("--producao-mes", type=float, default=0.0,
                    help="horas de conteudo perecivel produzidas por mes pelo time")
     s.set_defaults(func=cmd_conteudo)
+
+    s = sub.add_parser("cadeia", help="gargalo em serie: vazao, P(parada) e pedagios")
+    s.add_argument("--elos", required=True,
+                   help="lista 'nome:unidades_por_hora:p_parado:decisao'. "
+                        "p_parado e FRACAO (0.15 = 15%). decisao = sim/nao. "
+                        "Ex: plantio:120:0.2:nao,fazenda:80:0.15:nao")
+    s.add_argument("--recurso", default=None, help="nome do recurso (so rotulo)")
+    s.add_argument("--piso", type=float, default=None,
+                   help="fracao do desempenho mantida SEM a cadeia (0.55 = 55%)")
+    s.add_argument("--manutencao-min", type=float, default=None,
+                   help="minutos de atencao por semana que a cadeia cobra")
+    s.add_argument("--horas-semana", type=float, default=None,
+                   help="horas jogadas por semana, para converter atencao em %")
+    s.add_argument("--preco-cadeia", type=float, default=None,
+                   help="custo por unidade pela cadeia")
+    s.add_argument("--preco-teto", type=float, default=None,
+                   help="custo por unidade pela fonte-teto (NPC de preco fixo)")
+    s.set_defaults(func=cmd_cadeia)
 
     a = ap.parse_args()
     if not getattr(a, "func", None):

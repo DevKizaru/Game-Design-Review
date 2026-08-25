@@ -482,5 +482,107 @@ class TestConteudo(unittest.TestCase):
             ac.calc_conteudo(40, 12, consumo_semana=0, producao_mes=6)
 
 
+class TestParseElos(unittest.TestCase):
+
+    def test_formato_completo(self):
+        elos = ac.parse_elos("plantio:120:0.2:nao,cozinha:200:0.1:sim")
+        self.assertEqual(len(elos), 2)
+        self.assertEqual(elos[0]["nome"], "plantio")
+        self.assertAlmostEqual(elos[0]["p_parado"], 0.2)
+        self.assertFalse(elos[0]["decisao"])
+        self.assertTrue(elos[1]["decisao"])
+
+    def test_percentual_em_vez_de_fracao_e_recusado(self):
+        # 15 em vez de 0.15 e o erro obvio; a mensagem tem que ensinar.
+        with self.assertRaises(ValueError) as ctx:
+            ac.parse_elos("a:10:15:nao,b:10:0.1:nao")
+        self.assertIn("FRACAO", str(ctx.exception))
+
+    def test_um_elo_so_nao_e_cadeia(self):
+        with self.assertRaises(ValueError):
+            ac.parse_elos("a:10:0.1:nao")
+
+    def test_decisao_invalida_explica_o_teste(self):
+        with self.assertRaises(ValueError) as ctx:
+            ac.parse_elos("a:10:0.1:talvez,b:10:0.1:nao")
+        self.assertIn("risco proprio", str(ctx.exception))
+
+    def test_campos_faltando(self):
+        with self.assertRaises(ValueError):
+            ac.parse_elos("a:10:0.1,b:10:0.1:nao")
+
+
+class TestCadeia(unittest.TestCase):
+
+    def test_vazao_e_o_minimo_nao_a_media(self):
+        elos = ac.parse_elos("a:120:0:sim,b:90:0:sim,c:200:0:sim")
+        r = ac.calc_cadeia(elos)
+        self.assertAlmostEqual(r["vazao"], 90.0)
+        self.assertEqual(r["gargalo"]["nome"], "b")
+
+    def test_falha_em_serie_tres_elos_a_15pct(self):
+        # 1 - 0.85^3 = 0.385875 -> o numero citado na secao 11 e no SKILL.md
+        elos = ac.parse_elos("a:10:0.15:sim,b:10:0.15:sim,c:10:0.15:sim")
+        r = ac.calc_cadeia(elos)
+        self.assertAlmostEqual(r["p_parada"], 0.385875)
+        self.assertAlmostEqual(r["p_parada_fonte_unica"], 0.15)
+
+    def test_confiabilidade_nunca_sobe_com_mais_elos(self):
+        curta = ac.calc_cadeia(ac.parse_elos("a:10:0.1:sim,b:10:0.1:sim"))
+        longa = ac.calc_cadeia(
+            ac.parse_elos("a:10:0.1:sim,b:10:0.1:sim,c:10:0.05:sim"))
+        self.assertGreater(longa["p_parada"], curta["p_parada"])
+
+    def test_elo_perfeito_nao_muda_a_confiabilidade(self):
+        r = ac.calc_cadeia(ac.parse_elos("a:10:0.2:sim,b:99:0:sim"))
+        self.assertAlmostEqual(r["p_parada"], 0.2)
+
+    def test_vazao_efetiva_desconta_a_parada(self):
+        r = ac.calc_cadeia(ac.parse_elos("a:100:0.2:sim,b:100:0:sim"))
+        self.assertAlmostEqual(r["vazao_efetiva"], 80.0)
+
+    def test_pedagios_sao_os_elos_sem_decisao(self):
+        r = ac.calc_cadeia(
+            ac.parse_elos("a:10:0:nao,b:10:0:nao,c:10:0:sim"))
+        self.assertEqual([e["nome"] for e in r["pedagios"]], ["a", "b"])
+
+    def test_cadeia_toda_de_decisao_nao_tem_pedagio(self):
+        r = ac.calc_cadeia(ac.parse_elos("a:10:0:sim,b:10:0:sim"))
+        self.assertEqual(r["pedagios"], [])
+
+    def test_piso_gratuito_promete_mais_do_que_entrega(self):
+        # o achado: a cadeia parada nao trava o jogo, ela so entrega menos
+        elos = ac.parse_elos("a:10:0.15:nao,b:10:0.15:nao,c:10:0.15:sim")
+        r = ac.calc_cadeia(elos, piso=0.55)
+        self.assertAlmostEqual(r["ganho_prometido"], 0.45)
+        self.assertAlmostEqual(r["ganho_efetivo"], 0.45 * 0.614125)
+        self.assertLess(r["ganho_efetivo"], r["ganho_prometido"])
+        self.assertAlmostEqual(r["desempenho"], 0.55 + r["ganho_efetivo"])
+
+    def test_piso_em_percentual_e_recusado(self):
+        with self.assertRaises(ValueError):
+            ac.calc_cadeia(ac.parse_elos("a:10:0:sim,b:10:0:sim"), piso=55)
+
+    def test_sem_piso_nao_inventa_desempenho(self):
+        r = ac.calc_cadeia(ac.parse_elos("a:10:0:sim,b:10:0:sim"))
+        self.assertIsNone(r["desempenho"])
+        self.assertIsNone(r["ganho_efetivo"])
+
+    def test_atencao_vira_fracao_do_tempo_de_jogo(self):
+        r = ac.calc_cadeia(ac.parse_elos("a:10:0:sim,b:10:0:sim"),
+                           manutencao_min=42.0, horas_semana=14.0)
+        self.assertAlmostEqual(r["atencao_pct"], 42.0 / 840.0)
+
+    def test_faixa_de_coexistencia(self):
+        elos = ac.parse_elos("a:10:0:sim,b:10:0:sim")
+        acima = ac.calc_cadeia(elos, preco_cadeia=55, preco_teto=60)
+        dentro = ac.calc_cadeia(elos, preco_cadeia=42, preco_teto=60)
+        abaixo = ac.calc_cadeia(elos, preco_cadeia=20, preco_teto=60)
+        lo, hi = ac.FAIXA_COEXISTENCIA
+        self.assertGreater(acima["razao_preco"], hi)
+        self.assertTrue(lo <= dentro["razao_preco"] <= hi)
+        self.assertLess(abaixo["razao_preco"], lo)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
