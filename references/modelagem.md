@@ -16,8 +16,9 @@ As métricas de **design e loop** — T_loop por degrau, densidade de recompensa
 8. Custo de oportunidade
 9. Power creep
 10. Redundância: várias fontes para o mesmo recurso
-11. Mapa de recursos e grafo de conversão
-12. Quando faltam dados
+11. Cadeia obrigatória: várias etapas para um recurso
+12. Mapa de recursos e grafo de conversão
+13. Quando faltam dados
 
 ---
 
@@ -183,9 +184,70 @@ O caso intermediário — preço calibrado de propósito — é legítimo e tem 
 
 **O custo invisível de cada sistema a mais.** Além de manutenção, cada fonte nova entra na matriz de interações: com N sistemas tocando o mesmo recurso, existem N×(N−1)/2 pares para auditar a cada patch — e todo balanceamento futuro do recurso precisa ser feito N vezes. Três fontes para um recurso não custam o triplo: custam o triplo de código, o triplo de tuning e três vezes mais chance de um exploit nascer na costura entre elas.
 
-## 11. Mapa de recursos e grafo de conversão
+## 11. Cadeia obrigatória: várias etapas para um recurso
 
-A seção anterior compara as portas de **um** recurso. Esta olha o jogo inteiro de uma vez — e é a checagem com melhor relação custo/benefício de toda a skill, porque cabe numa página e revela em segundos problemas que passam por três reviews.
+A seção 10 trata do erro em **paralelo**: N portas para o mesmo recurso, o otimizador escolhe uma, as outras viram decoração. Esta trata do erro topologicamente oposto e igualmente comum — **N etapas obrigatórias antes de uma porta só**.
+
+Ele é mais difícil de enxergar porque a cadeia *parece* profundidade de sistema: cada elo tem nome próprio, arte própria, tela própria, e a proposta se lê como conteúdo em vez de atrito. É por isso que quase sempre passa no review — e a matriz da seção 10 não o pega, porque em série não existem fontes concorrentes para comparar. O sintoma de campo é uma frase: *"pra farmar UM recurso eu tenho que cuidar de quatro coisas."*
+
+**A vazão é o elo mais fraco, nunca a média:**
+
+```
+vazão_cadeia = min(vazão_elo_1, vazão_elo_2, ..., vazão_elo_n)
+```
+
+Corolário que economiza patches inteiros: **todo balanceamento feito fora do gargalo rende exatamente zero.** E é fora dele que o tuning costuma cair, porque o elo mais visível quase nunca é o mais lento.
+
+**A confiabilidade cai a cada elo, nunca sobe.** Com `pᵢ` = probabilidade de o elo *i* estar parado, vazio ou sem insumo num instante qualquer:
+
+```
+P(cadeia parada) = 1 − Π(1 − pᵢ)
+```
+
+Esse número costuma ser o achado do relatório inteiro. Três elos com 15% de ociosidade cada dão **39%** de chance de o jogador chegar e a linha estar parada — contra os mesmos 15% se a fonte fosse única. Um sistema em série é sempre menos confiável que qualquer um dos seus componentes isolados.
+
+Use `scripts/auditoria_calc.py cadeia` — ela devolve vazão, qual elo é o gargalo, `P(parada)` e a contagem de pedágios.
+
+**O teste que separa cadeia boa de pedágio: "cada elo adiciona uma decisão ou só um passo?"**
+
+Passe elo por elo. Cada um precisa de **sim** em pelo menos uma das três:
+
+| Pergunta | O que caracteriza |
+|---|---|
+| O jogador escolhe algo aqui que muda o resultado? | **Decisão** — alocar capacidade, priorizar saída, trocar velocidade por qualidade |
+| Existe risco, falha ou variância própria deste elo? | **Aposta** — o elo pode dar errado de um jeito que os outros não dão |
+| A saída deste elo serve a outra coisa além do próximo elo? | **Nó de valor** — o intermediário é vendável, estocável ou tem segundo destino |
+
+Três **não** = pedágio. Não é conteúdo, é atrito com nome próprio: uma tela a mais entre a intenção e o recurso.
+
+O veredito sai direto da contagem: **cadeia de N elos com N−1 pedágios é uma fonte única com N−1 telas de espera.** Colapse os pedágios em custo do elo que sobrou — o jogador não perde nada além do incômodo, porque não havia decisão nenhuma ali para perder. E o time deixa de manter N−1 subsistemas.
+
+**Punição dupla: quando existe piso gratuito.** Se o recurso da ponta tem substituto automático e grátis (regeneração passiva, respawn, plano B do sistema), a cadeia parada cobra duas vezes:
+
+1. o jogador cai para o piso e perde o excedente que a cadeia entregava;
+2. e ainda tem que largar o que estava fazendo para ir consertar a linha.
+
+O piso é o que impede a cadeia de travar o jogo — e é também o que garante que ela seja **ignorada** assim que a manutenção passar do excedente. Meça os dois lados: `excedente_da_cadeia` (quanto ela entrega acima do piso) e `custo_de_manutenção` (minutos por semana). Se o segundo se aproxima do primeiro, o sistema inteiro é opcional na prática, e o time construiu quatro subsistemas para um bônus que o jogador vai declinar.
+
+**Custo de atenção é um eixo, não um detalhe.** A matriz da seção 10 compara custo direto e vazão. Ela precisa de uma terceira coluna sempre que uma das fontes for uma cadeia:
+
+| Fonte | Custo por unidade | Unidades/hora | **Minutos de atenção por semana** |
+|---|---|---|---|
+
+É esse eixo que torna legítimo um NPC caro coexistindo com uma cadeia barata: o NPC ganha em atenção, a cadeia ganha em preço, a fronteira é real e as duas sobrevivem. Sem a coluna, as duas parecem redundantes e o corte cai no lugar errado — em geral matando a que tinha o eixo que ninguém mediu.
+
+**Faixa de coexistência.** Quando uma fonte-desconto (a cadeia) convive com uma fonte-teto (NPC de preço fixo), a cadeia precisa entregar entre **60% e 85%** do preço do NPC:
+
+- **acima de 85%** → o desconto não paga a manutenção; a cadeia vira conteúdo morto e todo mundo compra do NPC;
+- **abaixo de 60%** → o NPC deixa de ser teto e vira decoração; some a rede de proteção do jogador novo e o piso do mercado.
+
+É alvo de tuning, não lei da natureza. Mas se você não sabe em que ponto da faixa o seu sistema caiu, você não tem duas fontes: tem uma e um enfeite, e ainda não sabe qual é qual.
+
+**Quando a cadeia é a resposta certa.** Exatamente quando os elos passam no teste: crafting com escolha de material e qualidade variável; produção onde o jogador aloca capacidade limitada entre saídas concorrentes; cadeias cujo elo intermediário é comerciável e gera economia entre jogadores. O que essas têm em comum é que cada elo é um lugar onde o jogador **decide**, e cada intermediário tem mais de um destino. Aí a cadeia não é atrito: é a superfície de decisão do sistema. A fórmula de `P(parada)` continua valendo igual — só que agora existe algo do outro lado pagando por ela.
+
+## 12. Mapa de recursos e grafo de conversão
+
+A seção 10 compara as portas de **um** recurso. Esta olha o jogo inteiro de uma vez — e é a checagem com melhor relação custo/benefício de toda a skill, porque cabe numa página e revela em segundos problemas que passam por três reviews.
 
 **Passo 1 — liste todo recurso do jogo.** Moeda, materiais, consumíveis, energia, tickets, tempo, reputação, tudo que o jogador acumula ou gasta.
 
@@ -219,7 +281,7 @@ Um ciclo com produto exatamente 1 e alguma perda de tempo é o caso saudável: �
 
 **Quando refazer o mapa:** sempre que entrar recurso novo, conversão nova, NPC que compra ou vende, ou sistema de craft. É o único documento da auditoria que deve ficar permanentemente atualizado — todos os outros são fotografias, este é o mapa do terreno.
 
-## 12. Quando faltam dados
+## 13. Quando faltam dados
 
 Não invente. Entregue esta estrutura:
 
