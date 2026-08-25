@@ -30,10 +30,15 @@ Não há dependências: a calculadora é Python 3 puro, só biblioteca padrão.
 | `references/conselho.md` | Os 10 especialistas que debatem o sistema, cada um com uma entrega obrigatória, mais um Advogado do Diabo encarregado de atacar o próprio relatório |
 | `references/instrumentacao.md` | O que medir e como, para que "não temos dados" deixe de ser o fim da conversa |
 | `references/legibilidade.md` | Poder real × taxa de uso. Um item forte que ninguém usa é falha de informação, e mexer no número ali costuma piorar |
+| `references/mercado-e-monetizacao.md` | O mercado como instrumento de medição, formação de preço, liquidez, bot e RMT, loja de doação, a linha entre conveniência e vantagem, e o teto de poder pago |
+| `references/patch.md` | Auditoria de mudança: o que estava calibrado contra o valor antigo, breakpoints atravessados, quem jogou sob a regra velha, e o relatório curto de patch |
+| `references/desculpas.md` | O catálogo completo de respostas a desculpas, por domínio |
 | `references/testes-e-exploits.md` | Perfis de jogador, casos-limite e a tentativa honesta de quebrar o sistema |
 | `references/performance.md` | O custo de runtime que a planilha não mostra |
 | `scripts/auditoria_calc.py` | A calculadora: 10 subcomandos, funções `calc_*` puras |
 | `scripts/test_auditoria_calc.py` | 98 testes. A suíte existe porque uma versão anterior da ferramenta errou um EV por 121× |
+| `exemplos/` | Uma auditoria de ponta a ponta, com os comandos da calculadora e as saídas reais — inclusive a seção do que a skill aprova |
+| `evals/` | As definições dos evals e o benchmark contra o baseline sem skill, incluindo o que o baseline fez melhor |
 
 ---
 
@@ -76,6 +81,14 @@ Rodando os testes:
 ```bash
 cd scripts && python -m unittest test_auditoria_calc
 ```
+
+---
+
+## Exemplo completo
+
+[`exemplos/refino-de-equipamento.md`](exemplos/refino-de-equipamento.md) traz uma auditoria inteira: a proposta como um DEV a escreveria, e o relatório que sai dela — com os comandos da calculadora, as saídas reais e as severidades verificáveis.
+
+O achado principal do exemplo não está na curva de chances, que é onde a discussão naturalmente iria: está num NPC que parecia detalhe de conveniência e tornava o drop 66,6% mais caro que a compra. E a seção 8 do relatório lista, nominalmente, o que o sistema acerta — porque um relatório que só aponta problema faz o DEV consertar o que já funcionava.
 
 ---
 

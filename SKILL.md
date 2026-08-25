@@ -331,6 +331,10 @@ E o princípio que fecha tudo:
 >
 > Não existe "parece balanceado". Existe "foi medido, testado e sobreviveu ao Conselho".
 
+## Exemplo trabalhado
+
+`exemplos/refino-de-equipamento.md` traz uma auditoria de ponta a ponta: a proposta como o DEV a escreveu, e o relatório inteiro que sai dela — com os comandos da calculadora e as saídas reais. Vale a leitura quando estiver em dúvida sobre o formato, e principalmente pela seção 8, que é o que a skill aprova e por quê.
+
 ## Referências
 
 Carregue sob demanda — não leia tudo por reflexo:
