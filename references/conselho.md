@@ -29,6 +29,8 @@ Entrega obrigatória: a **matriz de dependências** no formato `Sistema auditado
 
 Segunda entrega, curta e implacável: a **carta de identidade do sistema** — uma frase dizendo para que ele serve e o que deixa de existir no jogo se ele for apagado. Se dois sistemas produzem a mesma frase, um dos dois é redundante, e o Arquiteto é quem tem que dizer qual. É aqui que morre a proposta de dar uma terceira porta a um recurso que já tem duas: não por estar desbalanceada, mas por não ter identidade própria. Ver `modelagem.md`, seção 10.
 
+Terceira entrega, e a que o Arquiteto costuma esquecer porque ela não parece acoplamento: **em série ou em paralelo?**. Se a proposta empilha etapas obrigatórias antes de um recurso — plantar para alimentar para criar para cozinhar — ele passa elo por elo com o teste *“decisão ou só um passo?”* e diz quantos elos são pedágio. Cada elo a mais derruba a confiabilidade da linha inteira e a vazão fica presa no elo mais lento, então esse é o único lugar do debate onde “profundidade de sistema” pode significar exatamente o oposto do que parece. Ver `modelagem.md`, seção 11.
+
 ## 2. Especialista em Balanceamento
 
 Analisa DPS, TTK, HP, defesa, progressão, recompensas, custos, probabilidades, scaling, breakpoints, eficiência, power creep, conteúdo trivial e conteúdo impossível.
